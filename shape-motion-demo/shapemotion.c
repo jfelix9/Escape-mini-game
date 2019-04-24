@@ -18,50 +18,82 @@
 
 
 AbRect rect10 = {abRectGetBounds, abRectCheck, {10,10}}; /**< 10x10 rectangle */
-AbRArrow rightArrow = {abRArrowGetBounds, abRArrowCheck, 30};
+//AbRArrow rightArrow = {abRArrowGetBounds, abRArrowCheck, 30};
+
+//my dumbass testing things
+AbRect rect11 = {abRectGetBounds, abRectCheck, {10,10}};
+AbRect rect12 = {abRectGetBounds, abRectCheck, {10,10}};
+AbRect rect13 = {abRectGetBounds, abRectCheck, {10,10}};
 
 AbRectOutline fieldOutline = {	/* playing field */
   abRectOutlineGetBounds, abRectOutlineCheck,   
   {screenWidth/2 - 10, screenHeight/2 - 10}
 };
 
-Layer layer4 = {
-  (AbShape *)&rightArrow,
-  {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
-  {0,0}, {0,0},				    /* last & next pos */
-  COLOR_PINK,
-  0
-};
+//Layer layer4 = {
+//  (AbShape *)&rightArrow,
+// {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
+//  {0,0}, {0,0},				    /* last & next pos */
+//  COLOR_PINK,
+// 0
+//};
   
 
-Layer layer3 = {		/**< Layer with an orange circle */
-  (AbShape *)&circle8,
-  {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
-  {0,0}, {0,0},				    /* last & next pos */
-  COLOR_VIOLET,
-  &layer4,
-};
-
+//Layer layer3 = {		/**< Layer with an orange circle */
+  //  (AbShape *)&circle8,
+  //  {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
+  //  {0,0}, {0,0},				    /* last & next pos */
+  //  COLOR_VIOLET,
+  //  &layer4,
+//};
 
 Layer fieldLayer = {		/* playing field as a layer */
   (AbShape *) &fieldOutline,
   {screenWidth/2, screenHeight/2},/**< center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_BLACK,
-  &layer3
+  0
 };
 
-Layer layer1 = {		/**< Layer with a red square */
-  (AbShape *)&rect10,
-  {screenWidth/2, screenHeight/2}, /**< center */
-  {0,0}, {0,0},				    /* last & next pos */
-  COLOR_RED,
+//Layer layer1 = {		/**< Layer with a red square */
+//(AbShape *)&rect10,
+//{screenWidth/2, screenHeight/2}, /**< center */
+//{0,0}, {0,0},				    /* last & next pos */
+//COLOR_RED,
+//&fieldLayer,
+//};
+
+//more of my shit that might not work
+
+Layer layer3 = {
+  (AbShape *)&rect13,
+  {(screenWidth/2)-30, (screenHeight/2 + 5)},
+  {0,0}, {0,0},
+  COLOR_GREEN,
   &fieldLayer,
 };
 
-Layer layer0 = {		/**< Layer with an orange circle */
-  (AbShape *)&circle14,
-  {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
+Layer layer2 = {
+  (AbShape *)&rect12,
+  {(screenWidth/2)-10, (screenHeight/2 + 5)},
+  {0,0}, {0,0},
+  COLOR_BLACK,
+  &layer3,
+};
+
+Layer layer1 = {
+  (AbShape *)&rect11,
+  {(screenWidth/2)+10, (screenHeight/2) + 5},
+  {0,0}, {0,0},
+  COLOR_RED,
+  &layer2,
+};
+//this is where my bullshit ends
+
+
+Layer layer0 = {		/**< Layer with yellow square*/
+  (AbShape *)&rect10,
+  {(screenWidth/2)+30, (screenHeight/2)+5}, /**< bit below & right of center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_ORANGE,
   &layer1,
@@ -78,9 +110,10 @@ typedef struct MovLayer_s {
 } MovLayer;
 
 /* initial value of {0,0} will be overwritten */
-MovLayer ml3 = { &layer3, {1,1}, 0 }; /**< not all layers move */
-MovLayer ml1 = { &layer1, {1,2}, &ml3 }; 
-MovLayer ml0 = { &layer0, {2,1}, &ml1 }; 
+MovLayer ml3 = { &layer3, {0,4}, 0 };
+MovLayer ml2 = { &layer2, {0,1}, &ml3 }; /**< not all layers move */
+MovLayer ml1 = { &layer1, {0,2}, &ml2 }; 
+MovLayer ml0 = { &layer0, {0,3}, &ml1 }; 
 
 void movLayerDraw(MovLayer *movLayers, Layer *layers)
 {
