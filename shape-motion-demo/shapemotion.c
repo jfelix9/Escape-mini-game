@@ -15,7 +15,14 @@
 #include <abCircle.h>
 
 #define GREEN_LED BIT6
+/*
+AbRect bar = {abRectGetBounds, abRectCheck,
+	      {screenWidth/2 - 10, 20}};
+*/
 
+AbRectOutline bar = {
+  abRectOutlineGetBounds, abRectOutlineCheck, {screenWidth/2 - 10, 15}
+};
 
 AbRect rect10 = {abRectGetBounds, abRectCheck, {10,10}}; /**< 10x10 rectangle */
 //AbRArrow rightArrow = {abRArrowGetBounds, abRArrowCheck, 30};
@@ -55,6 +62,18 @@ Layer fieldLayer = {		/* playing field as a layer */
   0
 };
 
+
+Layer barLayer = {
+  (AbShape *)&bar,
+  {screenWidth/2, 120},
+  {0,0}, {0,0},
+  COLOR_RED,
+  //  &fieldLayer,
+  0
+};
+
+
+
 //Layer layer1 = {		/**< Layer with a red square */
 //(AbShape *)&rect10,
 //{screenWidth/2, screenHeight/2}, /**< center */
@@ -67,23 +86,23 @@ Layer fieldLayer = {		/* playing field as a layer */
 
 Layer layer3 = {
   (AbShape *)&rect13,
-  {(screenWidth/2)-30, (screenHeight/2 + 5)},
+  {(screenWidth/2)-33, (screenHeight/2 + 5)},
   {0,0}, {0,0},
   COLOR_GREEN,
-  &fieldLayer,
+  &barLayer,
 };
 
 Layer layer2 = {
   (AbShape *)&rect12,
-  {(screenWidth/2)-10, (screenHeight/2 + 5)},
+  {(screenWidth/2)-11, (screenHeight/2 + 5)},
   {0,0}, {0,0},
-  COLOR_BLACK,
+  COLOR_YELLOW,
   &layer3,
 };
 
 Layer layer1 = {
   (AbShape *)&rect11,
-  {(screenWidth/2)+10, (screenHeight/2) + 5},
+  {(screenWidth/2)+11, (screenHeight/2) + 5},
   {0,0}, {0,0},
   COLOR_RED,
   &layer2,
@@ -93,9 +112,9 @@ Layer layer1 = {
 
 Layer layer0 = {		/**< Layer with yellow square*/
   (AbShape *)&rect10,
-  {(screenWidth/2)+30, (screenHeight/2)+5}, /**< bit below & right of center */
+  {(screenWidth/2)+33, (screenHeight/2)+5}, /**< bit below & right of center */
   {0,0}, {0,0},				    /* last & next pos */
-  COLOR_ORANGE,
+  COLOR_BLUE,
   &layer1,
 };
 
@@ -111,27 +130,27 @@ typedef struct MovLayer_s {
 
 /* initial value of {0,0} will be overwritten */
 MovLayer ml3 = { &layer3, {0,4}, 0 };
-MovLayer ml2 = { &layer2, {0,1}, &ml3 }; /**< not all layers move */
-MovLayer ml1 = { &layer1, {0,2}, &ml2 }; 
-MovLayer ml0 = { &layer0, {0,3}, &ml1 }; 
+MovLayer ml2 = { &layer2, {0,2}, &ml3 }; /**< not all layers move */
+MovLayer ml1 = { &layer1, {0,5}, &ml2 }; 
+MovLayer ml0 = { &layer0, {0,2}, &ml1 }; 
 
 void movLayerDraw(MovLayer *movLayers, Layer *layers)
 {
   int row, col;
-  MovLayer *movLayer;
+  MovLayer *current;
 
   and_sr(~8);			/**< disable interrupts (GIE off) */
-  for (movLayer = movLayers; movLayer; movLayer = movLayer->next) { /* for each moving layer */
-    Layer *l = movLayer->layer;
+  for (current = movLayers; current; current = current->next) { /* for each moving layer */
+    Layer *l = current->layer;
     l->posLast = l->pos;
     l->pos = l->posNext;
   }
   or_sr(8);			/**< disable interrupts (GIE on) */
 
 
-  for (movLayer = movLayers; movLayer; movLayer = movLayer->next) { /* for each moving layer */
+  for (current = movLayers; current; current = current->next) { /* for each moving layer */
     Region bounds;
-    layerGetBounds(movLayer->layer, &bounds);
+    layerGetBounds(current->layer, &bounds);
     lcd_setArea(bounds.topLeft.axes[0], bounds.topLeft.axes[1], 
 		bounds.botRight.axes[0], bounds.botRight.axes[1]);
     for (row = bounds.topLeft.axes[1]; row <= bounds.botRight.axes[1]; row++) {
@@ -154,7 +173,8 @@ void movLayerDraw(MovLayer *movLayers, Layer *layers)
 
 
 
-//Region fence = {{10,30}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}}; /**< Create a fence region */
+Region fence = {{0,0}, {SHORT_EDGE_PIXELS, LONG_EDGE_PIXELS}}; /**< Create a fence region */
+//changing the stuff inside the first curly bois from 10, 30 to 0,0 does nothing
 
 /** Advances a moving shape within a fence
  *  
@@ -169,19 +189,21 @@ void mlAdvance(MovLayer *ml, Region *fence)
   for (; ml; ml = ml->next) {
     vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);
     abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
-    for (axis = 0; axis < 2; axis ++) {
-      if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) ||
-	  (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis]) ) {
-	int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
-	newPos.axes[axis] += (2*velocity);
+    //    for (axis = 1; axis < 2; axis ++) {
+    if (/*(shapeBoundary.topLeft.axes[1] < fence->topLeft.axes[1]) ||*/
+	  (shapeBoundary.botRight.axes[1] > fence->botRight.axes[1]) ) {
+	//int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
+	int velocity = ml->velocity.axes[1];
+	newPos.axes[1] = -50;//commenting this out does nothing
+	//newPos.axes[axis] += 
       }	/**< if outside of fence */
-    } /**< for axis */
+      //} /**< for axis */
     ml->layer->posNext = newPos;
   } /**< for ml */
 }
 
 
-u_int bgColor = COLOR_BLUE;     /**< The background color */
+u_int bgColor = COLOR_WHITE;     /**< The background color */
 int redrawScreen = 1;           /**< Boolean for whether screen needs to be redrawn */
 
 Region fieldFence;		/**< fence around playing field  */
