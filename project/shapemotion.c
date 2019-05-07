@@ -1,12 +1,7 @@
-/** \file shapemotion.c
- *  \brief This is a simple shape motion demo.
- *  This demo creates two layers containing shapes.
- *  One layer contains a rectangle and the other a circle.
- *  While the CPU is running the green LED is on, and
- *  when the screen does not need to be redrawn the CPU
- *  is turned off along with the green LED.
- */  
 #include <msp430.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <libTimer.h>
 #include <lcdutils.h>
 #include <lcddraw.h>
@@ -16,120 +11,80 @@
 
 #define GREEN_LED BIT6
 
+AbRect mainRect = {abRectGetBounds, abRectCheck, {3, 3}};
+AbRect rect1 = {abRectGetBounds, abRectCheck, {3,10}};
 
-AbRect rect10 = {abRectGetBounds, abRectCheck, {10,10}}; /**< 10x10 rectangle */
-//AbRArrow rightArrow = {abRArrowGetBounds, abRArrowCheck, 30};
-
-//my dumbass testing things
-AbRect rect11 = {abRectGetBounds, abRectCheck, {10,10}};
-AbRect rect12 = {abRectGetBounds, abRectCheck, {10,10}};
-AbRect rect13 = {abRectGetBounds, abRectCheck, {10,10}};
-
-AbRectOutline fieldOutline = {	/* playing field */
+AbRectOutline fieldOutline = {
   abRectOutlineGetBounds, abRectOutlineCheck,   
-  {screenWidth/2 - 10, screenHeight/2 - 10}
+  {screenWidth/2, screenHeight/2} 
 };
 
-//Layer layer4 = {
-//  (AbShape *)&rightArrow,
-// {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
-//  {0,0}, {0,0},				    /* last & next pos */
-//  COLOR_PINK,
-// 0
-//};
-  
 
-//Layer layer3 = {		/**< Layer with an orange circle */
-  //  (AbShape *)&circle8,
-  //  {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
-  //  {0,0}, {0,0},				    /* last & next pos */
-  //  COLOR_VIOLET,
-  //  &layer4,
-//};
 
-Layer fieldLayer = {		/* playing field as a layer */
-  (AbShape *) &fieldOutline,
-  {screenWidth/2, screenHeight/2},/**< center */
-  {0,0}, {0,0},				    /* last & next pos */
-  COLOR_BLACK,
+Layer frog = {
+  (AbShape *)&mainRect,
+  {(screenWidth-20), (screenHeight/2)}, 
+  {0,0}, {0,0},	
+  COLOR_BLUE,
   0
 };
+Layer fieldLayer = {	
+  (AbShape *) &fieldOutline,
+  {screenWidth/2, screenHeight/2},
+  {0,0}, {0,0},			
+  COLOR_WHITE,
+  &frog,
+};
 
-//Layer layer1 = {		/**< Layer with a red square */
-//(AbShape *)&rect10,
-//{screenWidth/2, screenHeight/2}, /**< center */
-//{0,0}, {0,0},				    /* last & next pos */
-//COLOR_RED,
-//&fieldLayer,
-//};
-
-//more of my shit that might not work
-
-Layer layer3 = {
-  (AbShape *)&rect13,
-  {(screenWidth/2)-33, (screenHeight/2 + 5)},
-  {0,0}, {0,0},
-  COLOR_GREEN,
+Layer layerX = {		
+  (AbShape *)&rect1,
+  {(screenWidth/2), screenHeight/2}, 
+  {0,0}, {0,0},			
+  COLOR_WHITE,
   &fieldLayer,
 };
 
-Layer layer2 = {
-  (AbShape *)&rect12,
-  {(screenWidth/2)-11, (screenHeight/2 + 5)},
-  {0,0}, {0,0},
-  COLOR_YELLOW,
-  &layer3,
-};
-
-Layer layer1 = {
-  (AbShape *)&rect11,
-  {(screenWidth/2)+11, (screenHeight/2) + 5},
-  {0,0}, {0,0},
+Layer enemy = {
+  (AbShape *)&rect1,
+  {screenWidth/2, screenHeight/2}, 
+  {0,0}, {0,0},		
   COLOR_RED,
-  &layer2,
-};
-//this is where my bullshit ends
-
-
-Layer layer0 = {		/**< Layer with yellow square*/
-  (AbShape *)&rect10,
-  {(screenWidth/2)+33, (screenHeight/2)+5}, /**< bit below & right of center */
-  {0,0}, {0,0},				    /* last & next pos */
-  COLOR_BLUE,
-  &layer1,
+  &fieldLayer,
 };
 
-/** Moving Layer
- *  Linked list of layer references
- *  Velocity represents one iteration of change (direction & magnitude)
- */
+
+
 typedef struct MovLayer_s {
   Layer *layer;
   Vec2 velocity;
   struct MovLayer_s *next;
 } MovLayer;
 
-/* initial value of {0,0} will be overwritten */
-MovLayer ml3 = { &layer3, {0,4}, 0 };
-MovLayer ml2 = { &layer2, {0,2}, &ml3 }; /**< not all layers move */
-MovLayer ml1 = { &layer1, {0,5}, &ml2 }; 
-MovLayer ml0 = { &layer0, {0,2}, &ml1 }; 
+MovLayer mlfrog = { &frog, {0,0}, 0 }; 
+MovLayer mlx = { &layerX, {0,0}, &mlfrog }; 
+MovLayer ml0 = { &enemy, {0,3}, &mlx }; 
+
+
+MovLayer moveLeft = { &frog, {-3,0}, &mlfrog }; 
+MovLayer moveRight = { &frog, {3,0}, &mlfrog }; 
+MovLayer moveUp = { &frog, {0,-3}, &mlfrog }; 
+MovLayer moveDown = { &frog, {0,3}, &mlfrog }; 
 
 void movLayerDraw(MovLayer *movLayers, Layer *layers)
 {
   int row, col;
   MovLayer *movLayer;
 
-  and_sr(~8);			/**< disable interrupts (GIE off) */
-  for (movLayer = movLayers; movLayer; movLayer = movLayer->next) { /* for each moving layer */
+  and_sr(~8);		
+  for (movLayer = movLayers; movLayer -> next; movLayer = movLayer->next) { 
     Layer *l = movLayer->layer;
     l->posLast = l->pos;
     l->pos = l->posNext;
   }
-  or_sr(8);			/**< disable interrupts (GIE on) */
+  or_sr(8);		
 
 
-  for (movLayer = movLayers; movLayer; movLayer = movLayer->next) { /* for each moving layer */
+  for (movLayer = movLayers; movLayer -> next; movLayer = movLayer->next) { 
     Region bounds;
     layerGetBounds(movLayer->layer, &bounds);
     lcd_setArea(bounds.topLeft.axes[0], bounds.topLeft.axes[1], 
@@ -140,73 +95,127 @@ void movLayerDraw(MovLayer *movLayers, Layer *layers)
 	u_int color = bgColor;
 	Layer *probeLayer;
 	for (probeLayer = layers; probeLayer; 
-	     probeLayer = probeLayer->next) { /* probe all layers, in order */
+	     probeLayer = probeLayer->next) { 
 	  if (abShapeCheck(probeLayer->abShape, &probeLayer->pos, &pixelPos)) {
 	    color = probeLayer->color;
 	    break; 
-	  } /* if probe check */
-	} // for checking all layers at col, row
+	  } 
+	} 
 	lcd_writeColor(color); 
-      } // for col
-    } // for row
-  } // for moving layer being updated
+      } 
+    } 
+  } 
 }	  
 
-
-
-//Region fence = {{10,30}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}}; /**< Create a fence region */
 
 /** Advances a moving shape within a fence
  *  
  *  \param ml The moving shape to be advanced
  *  \param fence The region which will serve as a boundary for ml
  */
-void mlAdvance(MovLayer *ml, Region *fence)
-{
-  Vec2 newPos;
-  u_char axis;
-  Region shapeBoundary;
-  for (; ml; ml = ml->next) {
-    vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);
-    abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
-    for (axis = 0; axis < 2; axis ++) {
-      if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) ||
-	  (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis]) ) {
-	int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
-	newPos.axes[axis] += (2*velocity);
-      }	/**< if outside of fence */
-    } /**< for axis */
+void mlAdvance(MovLayer *ml, Region *fence, MovLayer *mlfrog) {
+	u_char axis;
+	Region shapeBoundary;
+	Region frog;
+
+	
+		Vec2 newPos;
+	Vec2 currPos;
+	vec2Add(&currPos, &mlfrog->layer->posNext, &mlfrog->velocity);
+	abShapeGetBounds(mlfrog->layer->abShape, &currPos, &frog);
+
+	for (; ml -> next -> next; ml = ml->next) {
+    
+		vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);
+    	abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
+
+		for (axis = 0; axis < 2; axis ++) {
+			if (shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) {
+				
+				int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
+				newPos.axes[axis] += (2*velocity);
+			}	
+			
+			if (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis])  {
+				
+				int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
+				newPos.axes[axis] += (2*velocity);
+			}	
+			
+			if (shapeBoundary.botRight.axes[0] > frog.topLeft.axes[0]) {
+				if (frog.botRight.axes[0] > shapeBoundary.topLeft.axes[0]) {
+                    if (shapeBoundary.botRight.axes[1] > frog.topLeft.axes[1]) {
+                        if (frog.botRight.axes[1] > shapeBoundary.topLeft.axes[1]) {
+                
+                            drawString5x7(screenWidth/2,screenHeight/2, "you lose", COLOR_RED, COLOR_WHITE);
+                            //reminder to change colors on this since its imposible to see
+                            WDTCTL = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+    	ml->layer->posNext = newPos;
+  	} 
+
+  	
+  	
+  	//COLLISIONS
+	vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);
+	abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
+	if (shapeBoundary.topLeft.axes[1] < fence->topLeft.axes[0]) {
+
+		newPos.axes[0] = screenWidth - 20;
+		newPos.axes[1] = screenHeight/2;
+
+	}
+	
+	if (shapeBoundary.botRight.axes[1] > fence->botRight.axes[1]) {
+
+		newPos.axes[0] = screenWidth - 20;
+		newPos.axes[1] = screenHeight/2;
+
+	}
+	
+	if (shapeBoundary.botRight.axes[0] > fence->botRight.axes[1]) {
+
+		newPos.axes[0] = screenWidth - 20;
+		newPos.axes[1] = screenHeight/2;
+
+	}	
+	if (shapeBoundary.topLeft.axes[0] < fence->topLeft.axes[0]) {
+		newPos.axes[0] = screenWidth - 20;
+		newPos.axes[1] = screenHeight/2;
+	}
     ml->layer->posNext = newPos;
-  } /**< for ml */
 }
 
 
-u_int bgColor = COLOR_WHITE;     /**< The background color */
-int redrawScreen = 1;           /**< Boolean for whether screen needs to be redrawn */
+u_int bgColor = COLOR_WHITE;   
+int redrawScreen = 1;     
 
-Region fieldFence;		/**< fence around playing field  */
+Region fieldFence;		
+Region frogRegion;
 
 
-/** Initializes everything, enables interrupts and green LED, 
- *  and handles the rendering for the screen
- */
 void main()
 {
-  P1DIR |= GREEN_LED;		/**< Green led on when CPU on */		
+  P1DIR |= GREEN_LED;			
   P1OUT |= GREEN_LED;
 
   configureClocks();
   lcd_init();
   shapeInit();
-  p2sw_init(1);
+  p2sw_init(15); 
 
   shapeInit();
 
-  layerInit(&layer0);
-  layerDraw(&layer0);
-
-
+  layerInit(&enemy);
+  layerDraw(&enemy);
   layerGetBounds(&fieldLayer, &fieldFence);
+  
+  layerGetBounds(&frog, &frogRegion);
 
 
   enableWDTInterrupts();      /**< enable periodic interrupt */
@@ -220,18 +229,50 @@ void main()
     }
     P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
     redrawScreen = 0;
-    movLayerDraw(&ml0, &layer0);
+    movLayerDraw(&ml0, &enemy);
   }
+
+
+
 }
 
-/** Watchdog timer interrupt handler. 15 interrupts/sec */
+
 void wdt_c_handler()
 {
+	char buttonPressed = 15 - p2sw_read();
+    
+    
+    
+    
+    //char buttonPressed = p2sw_read();
+    //ask*************************************************************
+    
   static short count = 0;
   P1OUT |= GREEN_LED;		      /**< Green LED on when cpu on */
   count ++;
-  if (count == 15) {
-    mlAdvance(&ml0, &fieldFence);
+  if (count == 50) {
+      //chang back maybe***********************
+
+	  switch (buttonPressed) {	
+          
+		case 1:
+			mlAdvance(&moveLeft, &fieldFence, &mlfrog);
+			movLayerDraw(&moveLeft, &frog);
+			break;
+		case 2:
+			mlAdvance(&moveRight, &fieldFence, &mlfrog);
+			movLayerDraw(&moveRight, &frog);
+			break;
+		case 4:
+			mlAdvance(&moveUp, &fieldFence, &mlfrog);
+			movLayerDraw(&moveUp, &frog);
+			break;
+		case 8:
+			mlAdvance(&moveDown, &fieldFence, &mlfrog);
+			movLayerDraw(&moveDown, &frog);
+			break;
+	  }
+    mlAdvance(&ml0, &fieldFence, &mlfrog);
     if (p2sw_read())
       redrawScreen = 1;
     count = 0;
